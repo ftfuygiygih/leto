@@ -1,1 +1,363 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Пульт — менеджер ботов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;
+    --panel:#1c1f26;
+    --panel-2:#23262f;
+    --line:#2d313c;
+    --text:#e7e8ec;
+    --muted:#8a8f9c;
+    --amber:#e3a23c;
+    --amber-dim:#5c4a28;
+    --danger:#d9665f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+  header{padding:48px 24px 28px;max-width:760px;margin:0 auto;}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;margin:0 0 6px;letter-spacing:-0.01em;}
+  header p{color:var(--muted);margin:0;font-size:15px;max-width:480px;line-height:1.5;}
 
+  main{max-width:760px;margin:0 auto;padding:0 24px 80px;}
+
+  form#add-form{display:flex;gap:10px;margin-bottom:32px;}
+  #token-input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit;}
+  #token-input:focus{outline:none;border-color:var(--amber);}
+  #add-form button{background:var(--amber);color:#1a1405;border:none;border-radius:8px;padding:0 20px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;}
+  #add-form button:hover{filter:brightness(1.08);}
+  #add-form button:disabled{opacity:.5;cursor:default;}
+
+  #error{color:var(--danger);font-size:13px;margin:-20px 0 20px;min-height:16px;}
+
+  #list{display:flex;flex-direction:column;gap:10px;}
+  .bot{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .bot-row{display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer;}
+  .avatar{width:38px;height:38px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--amber);flex-shrink:0;}
+  .bot-info{flex:1;min-width:0;}
+  .bot-name{font-weight:600;font-size:15px;}
+  .bot-handle{color:var(--muted);font-size:13px;}
+  .status{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .status.on{color:var(--amber);}
+
+  .switch{width:40px;height:22px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);position:relative;flex-shrink:0;cursor:pointer;transition:background .15s;}
+  .switch.on{background:var(--amber-dim);border-color:var(--amber);}
+  .switch .knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:left .15s,background .15s;}
+  .switch.on .knob{left:20px;background:var(--amber);}
+
+  .panel{border-top:1px solid var(--line);padding:16px 18px 18px;display:none;}
+  .panel.open{display:block;}
+  .panel label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;}
+  .panel-row{display:flex;gap:8px;margin-bottom:12px;}
+  .panel-row input,.panel-row textarea{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;color:var(--text);font-family:inherit;font-size:13px;}
+  #chat-id{width:140px;}
+  .panel-row textarea{flex:1;resize:vertical;min-height:38px;}
+  .send-btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:0 16px;cursor:pointer;font-family:inherit;font-size:13px;}
+  .send-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .delete-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;font-family:inherit;}
+  .delete-btn:hover{color:var(--danger);}
+
+  .messages{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;}
+  .messages-title{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .msg{font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);}
+  .msg:last-child{border-bottom:none;}
+  .msg .from{color:var(--amber);font-weight:500;}
+  .msg .meta{color:var(--muted);font-size:11px;margin-left:6px;}
+  .empty-msgs{color:var(--muted);font-size:13px;}
+
+  .empty{color:var(--muted);font-size:14px;padding:30px 0;text-align:center;}
+
+  .broadcast{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;}
+  .broadcast label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;}
+  .broadcast-row{display:flex;gap:8px;align-items:flex-start;}
+  .broadcast-row textarea{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;color:var(--text);font-family:inherit;font-size:13px;resize:vertical;min-height:38px;}
+  .broadcast-btn{background:var(--amber);color:#1a1405;border:none;border-radius:7px;padding:0 16px;height:38px;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit;white-space:nowrap;}
+  .broadcast-btn:disabled{opacity:.5;cursor:default;}
+  .broadcast-count{color:var(--muted);font-size:12px;margin-top:6px;}
+  .broadcast-result{font-size:12px;margin-top:6px;color:var(--amber);}
+
+  .ad{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;}
+  .ad-title{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .ad textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;color:var(--text);font-family:inherit;font-size:13px;resize:vertical;min-height:50px;margin-bottom:10px;}
+  .ad-field{margin-bottom:10px;}
+  .ad-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;}
+  .ad-field input[type=text],.ad-field input[type=time]{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px;width:100%;}
+  .ad-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .ad-toggle-row .switch{flex-shrink:0;}
+  .ad-toggle-row span{font-size:13px;}
+  .ad-save{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:13px;}
+  .ad-save:hover{border-color:var(--amber);color:var(--amber);}
+  .ad-status{font-size:12px;color:var(--amber);margin-left:10px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Пульт</h1>
+  <p>Подключай ботов по токену от @BotFather. Переключатель — это приём и обработка сообщений; сообщения можно отправлять от имени бота вручную.</p>
+</header>
+<main>
+  <form id="add-form">
+    <input id="token-input" type="text" placeholder="Токен бота, например 123456:ABC-def..." autocomplete="off" />
+    <button type="submit">Подключить</button>
+  </form>
+  <div id="error"></div>
+  <div id="list"></div>
+  <div class="empty" id="empty-state" style="display:none">Пока нет ни одного бота. Вставь токен выше, чтобы начать.</div>
+</main>
+
+<script>
+const listEl = document.getElementById('list');
+const emptyEl = document.getElementById('empty-state');
+const errorEl = document.getElementById('error');
+const form = document.getElementById('add-form');
+const tokenInput = document.getElementById('token-input');
+
+let bots = [];
+let openId = null;
+let pollTimer = null;
+
+async function api(path, opts) {
+  const r = await fetch('/api' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Что-то пошло не так');
+  return data;
+}
+
+function initials(name) {
+  return (name || '?').slice(0, 1).toUpperCase();
+}
+
+async function loadBots() {
+  bots = await api('/bots');
+  render();
+}
+
+function render() {
+  listEl.innerHTML = '';
+  emptyEl.style.display = bots.length ? 'none' : 'block';
+  for (const bot of bots) {
+    const el = document.createElement('div');
+    el.className = 'bot';
+    el.innerHTML = `
+      <div class="bot-row" data-id="${bot.id}">
+        <div class="avatar">${initials(bot.firstName)}</div>
+        <div class="bot-info">
+          <div class="bot-name">${bot.firstName || 'Без имени'}</div>
+          <div class="bot-handle">@${bot.username}</div>
+        </div>
+        <div class="status ${bot.active ? 'on' : ''}">${bot.active ? 'принимает' : 'выключен'}</div>
+        <div class="switch ${bot.active ? 'on' : ''}" data-toggle="${bot.id}"><div class="knob"></div></div>
+      </div>
+      <div class="panel ${openId === bot.id ? 'open' : ''}" data-panel="${bot.id}">
+        <label>Написать от имени бота</label>
+        <div class="panel-row">
+          <input id="chat-id" type="text" placeholder="chat ID" data-chat="${bot.id}" />
+          <textarea rows="1" placeholder="Текст сообщения" data-text="${bot.id}"></textarea>
+          <button class="send-btn" data-send="${bot.id}">Отправить</button>
+        </div>
+        <button class="delete-btn" data-delete="${bot.id}">Удалить бота</button>
+        <div class="messages">
+          <div class="messages-title">Входящие (обновляется, пока бот включён)</div>
+          <div data-messages="${bot.id}"><div class="empty-msgs">Нет сообщений</div></div>
+        </div>
+        <div class="broadcast">
+          <label>Рассылка всем, кто писал боту</label>
+          <div class="broadcast-row">
+            <textarea rows="1" placeholder="Текст рассылки" data-broadcast-text="${bot.id}"></textarea>
+            <button class="broadcast-btn" data-broadcast="${bot.id}">Разослать всем</button>
+          </div>
+          <div class="broadcast-count" data-chat-count="${bot.id}">Загружаю список чатов…</div>
+          <div class="broadcast-result" data-broadcast-result="${bot.id}"></div>
+        </div>
+        <div class="ad">
+          <div class="ad-title">Режим рекламы</div>
+          <textarea placeholder="Рекламный текст" data-ad-text="${bot.id}"></textarea>
+          <div class="ad-field">
+            <label>Команды-триггеры (через запятую)</label>
+            <input type="text" placeholder="/start, /help" data-ad-triggers="${bot.id}" />
+          </div>
+          <div class="ad-toggle-row">
+            <div class="switch" data-ad-toggle-reply="${bot.id}"><div class="knob"></div></div>
+            <span>Автоответ рекламой на эти команды</span>
+          </div>
+          <div class="ad-toggle-row">
+            <div class="switch" data-ad-toggle-schedule="${bot.id}"><div class="knob"></div></div>
+            <span>Ежедневная рассылка по расписанию в</span>
+            <input type="time" style="width:110px" data-ad-time="${bot.id}" />
+          </div>
+          <button class="ad-save" data-ad-save="${bot.id}">Сохранить</button>
+          <span class="ad-status" data-ad-status="${bot.id}"></span>
+        </div>
+      </div>
+    `;
+    listEl.appendChild(el);
+  }
+  if (openId) {
+    loadMessages(openId);
+    loadChatCount(openId);
+    loadAdSettings(openId);
+  }
+}
+
+async function loadAdSettings(id) {
+  const ad = await api(`/bots/${id}/ad`).catch(() => null);
+  if (!ad) return;
+  const textEl = document.querySelector(`[data-ad-text="${id}"]`);
+  if (!textEl) return;
+  textEl.value = ad.text || '';
+  document.querySelector(`[data-ad-triggers="${id}"]`).value = (ad.triggers || []).join(', ');
+  document.querySelector(`[data-ad-toggle-reply="${id}"]`).classList.toggle('on', !!ad.autoReplyEnabled);
+  document.querySelector(`[data-ad-toggle-schedule="${id}"]`).classList.toggle('on', !!ad.scheduleEnabled);
+  document.querySelector(`[data-ad-time="${id}"]`).value = ad.scheduleTime || '10:00';
+}
+
+async function loadChatCount(id) {
+  const list = await api(`/bots/${id}/chats`).catch(() => []);
+  const el = document.querySelector(`[data-chat-count="${id}"]`);
+  if (!el) return;
+  el.textContent = list.length
+    ? `Известно чатов: ${list.length}`
+    : 'Пока никто не писал боту — рассылать некуда';
+}
+
+async function loadMessages(id) {
+  const msgs = await api(`/bots/${id}/messages`).catch(() => []);
+  const box = document.querySelector(`[data-messages="${id}"]`);
+  if (!box) return;
+  box.innerHTML = msgs.length
+    ? msgs.map(m => `<div class="msg"><span class="from">${m.from}</span><span class="meta">chat ${m.chatId} · ${new Date(m.date).toLocaleString('ru-RU')}</span><div>${m.text}</div></div>`).join('')
+    : '<div class="empty-msgs">Нет сообщений</div>';
+}
+
+function restartPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    if (openId) { loadMessages(openId); loadChatCount(openId); }
+  }, 4000);
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorEl.textContent = '';
+  const token = tokenInput.value.trim();
+  if (!token) return;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    await api('/bots', { method: 'POST', body: JSON.stringify({ token }) });
+    tokenInput.value = '';
+    await loadBots();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+listEl.addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-id]');
+  const toggle = e.target.closest('[data-toggle]');
+  const del = e.target.closest('[data-delete]');
+  const send = e.target.closest('[data-send]');
+
+  if (toggle) {
+    e.stopPropagation();
+    try {
+      await api(`/bots/${toggle.dataset.toggle}/toggle`, { method: 'POST' });
+      await loadBots();
+    } catch (err) { errorEl.textContent = err.message; }
+    return;
+  }
+  if (del) {
+    e.stopPropagation();
+    if (!confirm('Удалить этого бота из списка?')) return;
+    await api(`/bots/${del.dataset.delete}`, { method: 'DELETE' });
+    if (openId === del.dataset.delete) openId = null;
+    await loadBots();
+    return;
+  }
+  if (send) {
+    e.stopPropagation();
+    const id = send.dataset.send;
+    const chatId = document.querySelector(`[data-chat="${id}"]`).value.trim();
+    const text = document.querySelector(`[data-text="${id}"]`).value.trim();
+    errorEl.textContent = '';
+    if (!chatId || !text) { errorEl.textContent = 'Укажи chat ID и текст сообщения'; return; }
+    try {
+      await api(`/bots/${id}/send`, { method: 'POST', body: JSON.stringify({ chatId, text }) });
+      document.querySelector(`[data-text="${id}"]`).value = '';
+    } catch (err) { errorEl.textContent = err.message; }
+    return;
+  }
+  const broadcast = e.target.closest('[data-broadcast]');
+  if (broadcast) {
+    e.stopPropagation();
+    const id = broadcast.dataset.broadcast;
+    const textEl = document.querySelector(`[data-broadcast-text="${id}"]`);
+    const resultEl = document.querySelector(`[data-broadcast-result="${id}"]`);
+    const text = textEl.value.trim();
+    if (!text) { resultEl.textContent = 'Напиши текст рассылки'; return; }
+    if (!confirm('Отправить это сообщение всем, кто писал боту?')) return;
+    broadcast.disabled = true;
+    resultEl.textContent = 'Рассылаю…';
+    try {
+      const res = await api(`/bots/${id}/broadcast`, { method: 'POST', body: JSON.stringify({ text }) });
+      resultEl.textContent = `Отправлено: ${res.sent} из ${res.total}` + (res.failed ? `, не доставлено: ${res.failed}` : '');
+      textEl.value = '';
+    } catch (err) {
+      resultEl.textContent = err.message;
+    } finally {
+      broadcast.disabled = false;
+    }
+    return;
+  }
+
+  const adToggleReply = e.target.closest('[data-ad-toggle-reply]');
+  if (adToggleReply) { e.stopPropagation(); adToggleReply.classList.toggle('on'); return; }
+
+  const adToggleSchedule = e.target.closest('[data-ad-toggle-schedule]');
+  if (adToggleSchedule) { e.stopPropagation(); adToggleSchedule.classList.toggle('on'); return; }
+
+  const adSave = e.target.closest('[data-ad-save]');
+  if (adSave) {
+    e.stopPropagation();
+    const id = adSave.dataset.adSave;
+    const statusEl = document.querySelector(`[data-ad-status="${id}"]`);
+    const payload = {
+      text: document.querySelector(`[data-ad-text="${id}"]`).value.trim(),
+      triggers: document.querySelector(`[data-ad-triggers="${id}"]`).value.split(',').map((s) => s.trim()).filter(Boolean),
+      autoReplyEnabled: document.querySelector(`[data-ad-toggle-reply="${id}"]`).classList.contains('on'),
+      scheduleEnabled: document.querySelector(`[data-ad-toggle-schedule="${id}"]`).classList.contains('on'),
+      scheduleTime: document.querySelector(`[data-ad-time="${id}"]`).value || '10:00'
+    };
+    try {
+      await api(`/bots/${id}/ad`, { method: 'POST', body: JSON.stringify(payload) });
+      statusEl.textContent = 'Сохранено';
+      setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    } catch (err) {
+      statusEl.textContent = err.message;
+    }
+    return;
+  }
+
+  if (row) {
+    const id = row.dataset.id;
+    openId = openId === id ? null : id;
+    render();
+    restartPolling();
+  }
+});
+
+loadBots();
+restartPolling();
+</script>
+</body>
+</html>
